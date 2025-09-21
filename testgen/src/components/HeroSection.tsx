@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, Zap, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -30,10 +31,10 @@ const HeroSection = () => {
           
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Button size="lg" className="bg-gradient-primary hover:opacity-90 text-lg px-8 py-4" asChild>
-              <a href="/dashboard">
+              <Link to="/dashboard">
                 Start Testing Now
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </a>
+              </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-4">
               View Demo
