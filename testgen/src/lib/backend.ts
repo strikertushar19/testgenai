@@ -142,6 +142,80 @@ export class ClientBackend {
     });
   }
 
+  // Recursively fetch files from directories
+  static async fetchFilesRecursively(
+    owner: string, 
+    repo: string, 
+    contents: any[], 
+    files: FileContent[], 
+    currentPath: string,
+    maxFiles: number = 15
+  ): Promise<void> {
+    if (files.length >= maxFiles) return;
+
+    for (const item of contents) {
+      if (files.length >= maxFiles) break;
+
+      const itemPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+      
+      if (item.type === 'file') {
+        // Check if it's a source file we want
+        const ext = item.name.split('.').pop()?.toLowerCase() || '';
+        const isSourceFile = ['.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.cpp', '.c', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.vue', '.svelte', '.html', '.css', '.scss', '.sass', '.less', '.json', '.yaml', '.yml', '.toml', '.ini', '.env', '.sql', '.sh', '.bat', '.ps1'].includes('.' + ext);
+        const isNotExcluded = !this.shouldExcludeFile(itemPath);
+        const isReasonableSize = item.size < 50000; // Less than 50KB
+        
+        if (isSourceFile && isNotExcluded && isReasonableSize) {
+          try {
+            console.log(`Fetching content for: ${itemPath}`);
+            const contentResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${itemPath}`, {
+              headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'TestGen-AI/1.0'
+              }
+            });
+            
+            if (contentResponse.ok) {
+              const contentData = await contentResponse.json();
+              
+              if (contentData.content && contentData.type === 'file') {
+                // Decode base64 content
+                const content = atob(contentData.content);
+                files.push({
+                  path: itemPath,
+                  content,
+                  size: item.size
+                });
+                console.log(`Successfully fetched: ${itemPath} (${content.length} chars)`);
+              }
+            } else {
+              console.warn(`Failed to fetch content for ${itemPath}: ${contentResponse.status}`);
+            }
+          } catch (error) {
+            console.warn(`Error fetching content for ${itemPath}:`, error);
+          }
+        }
+      } else if (item.type === 'dir' && !this.shouldExcludeFile(itemPath)) {
+        // Recursively fetch from subdirectory
+        try {
+          const dirResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${itemPath}`, {
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'TestGen-AI/1.0'
+            }
+          });
+          
+          if (dirResponse.ok) {
+            const dirData = await dirResponse.json();
+            await this.fetchFilesRecursively(owner, repo, dirData, files, itemPath, maxFiles);
+          }
+        } catch (error) {
+          console.warn(`Error fetching directory ${itemPath}:`, error);
+        }
+      }
+    }
+  }
+
   // Clone repository using GitHub API (no actual git clone needed)
   static async cloneRepository(repoUrl: string): Promise<RepoResponse> {
     try {
@@ -168,79 +242,37 @@ export class ClientBackend {
       
       console.log(`Using branch: ${defaultBranch}`);
       
-      // Get the repository tree
-      const treeResponse = await fetch(`https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/git/trees/${defaultBranch}?recursive=1`, {
+      // Use GitHub Contents API to get repository contents
+      const contentsResponse = await fetch(`https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/contents/`, {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'TestGen-AI/1.0'
         }
       });
-      if (!treeResponse.ok) {
-        throw new Error(`GitHub API error: ${treeResponse.status} ${treeResponse.statusText}`);
+      if (!contentsResponse.ok) {
+        throw new Error(`GitHub API error: ${contentsResponse.status} ${contentsResponse.statusText}`);
       }
       
-      const treeData = await treeResponse.json();
-      if (!treeData.tree) {
-        throw new Error('No tree data found in GitHub API response');
+      const contentsData = await contentsResponse.json();
+      if (!Array.isArray(contentsData)) {
+        throw new Error('No contents data found in GitHub API response');
       }
       
-      console.log(`Found ${treeData.tree.length} items in repository`);
+      console.log(`Found ${contentsData.length} items in repository root`);
       
-      // Filter for source code files
-      const sourceFiles = treeData.tree.filter((item: any) => {
-        const isBlob = item.type === 'blob';
-        const isNotExcluded = !this.shouldExcludeFile(item.path);
-        const isReasonableSize = item.size < 50000; // Less than 50KB
-        const isSourceFile = ['.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.cpp', '.c', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.vue', '.svelte', '.html', '.css', '.scss', '.sass', '.less', '.json', '.yaml', '.yml', '.toml', '.ini', '.env', '.sql', '.sh', '.bat', '.ps1'].includes(
-          item.path.split('.').pop()?.toLowerCase() || ''
-        );
-        
-        return isBlob && isNotExcluded && isReasonableSize && isSourceFile;
-      });
+      // Recursively fetch files from directories
+      const files: FileContent[] = [];
+      await this.fetchFilesRecursively(repoInfo.owner, repoInfo.repo, contentsData, files, '');
       
-      console.log(`Found ${sourceFiles.length} source files to fetch`);
+      console.log(`Total files fetched: ${files.length}`);
+      if (files.length > 0) {
+        console.log('Files found:', files.map(f => f.path));
+      }
       
-      if (sourceFiles.length === 0) {
+      if (files.length === 0) {
         console.log('No source files found, creating fallback example...');
         return this.createFallbackResponse(repoInfo);
       }
-      
-      // Fetch content for each file (limit to first 15 files for performance)
-      const limitedFiles = sourceFiles.slice(0, 15);
-      const files: FileContent[] = [];
-      
-      for (const file of limitedFiles) {
-        try {
-          console.log(`Fetching content for: ${file.path}`);
-          const contentResponse = await fetch(`https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/contents/${file.path}`, {
-            headers: {
-              'Accept': 'application/vnd.github.v3+json',
-              'User-Agent': 'TestGen-AI/1.0'
-            }
-          });
-          
-          if (contentResponse.ok) {
-            const contentData = await contentResponse.json();
-            
-            if (contentData.content && contentData.type === 'file') {
-              // Decode base64 content
-              const content = atob(contentData.content);
-              files.push({
-                path: file.path,
-                content,
-                size: file.size
-              });
-              console.log(`Successfully fetched: ${file.path} (${content.length} chars)`);
-            }
-          } else {
-            console.warn(`Failed to fetch content for ${file.path}: ${contentResponse.status}`);
-          }
-        } catch (error) {
-          console.warn(`Error fetching content for ${file.path}:`, error);
-        }
-      }
-      
-      console.log(`Total files fetched: ${files.length}`);
       
       // Generate context
       const context = this.generatePromptContext(files);
