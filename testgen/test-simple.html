@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Repository Fetch</title>
+</head>
+<body>
+    <h1>Test Repository Fetch</h1>
+    <button onclick="testFetch()">Test Fetch Repository</button>
+    <div id="result"></div>
+
+    <script type="module">
+        // Test the repository fetching
+        async function testFetch() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Test with a simple repository
+                const repoUrl = 'https://github.com/facebook/react';
+                console.log('Fetching repository:', repoUrl);
+                
+                // Make a direct GitHub API call to test
+                const response = await fetch(`https://api.github.com/repos/facebook/react`);
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+                }
+                
+                const repoData = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>✅ GitHub API Test Successful!</h3>
+                    <p><strong>Repository:</strong> ${repoData.full_name}</p>
+                    <p><strong>Description:</strong> ${repoData.description}</p>
+                    <p><strong>Default Branch:</strong> ${repoData.default_branch}</p>
+                    <p><strong>Stars:</strong> ${repoData.stargazers_count}</p>
+                    <p><strong>Language:</strong> ${repoData.language}</p>
+                `;
+                
+                console.log('Repository data:', repoData);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3>❌ Test Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>This might be due to CORS restrictions. Try using the actual application instead.</p>
+                `;
+            }
+        }
+        
+        // Make testFetch available globally
+        window.testFetch = testFetch;
+    </script>
+</body>
+</html>

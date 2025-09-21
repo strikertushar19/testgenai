@@ -25,6 +25,7 @@ import TestRunner from "@/components/TestRunner";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { ApiService, parseGitHubUrl, convertGeminiTestsToAppFormat } from "@/lib/api";
+import ClientBackend from "@/lib/backend";
 
 interface TestCase {
   id: string;
@@ -80,10 +81,8 @@ const Dashboard = () => {
         throw new Error(response.message);
       }
       
-      // Generate prompt context from files
-      const promptContext = response.files
-        .map(file => `// File: ${file.path}\n${file.content}\n\n---\n`)
-        .join('\n');
+      // Generate prompt context from files using the backend
+      const promptContext = ClientBackend.generatePromptContext(response.files);
       
       // Update state
       setClonedFiles(response.files.map(f => f.path));
