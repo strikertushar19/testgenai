@@ -92,29 +92,51 @@ func shouldExcludeFile(filePath string) bool {
 }
 
 func parseGitHubURL(url string) (string, string, error) {
-	// Clean the URL to remove any file paths or branches
-	cleanURL := strings.Split(url, "/blob/")[0]
-	cleanURL = strings.Split(cleanURL, "/tree/")[0]
+	// Clean the URL to remove any file paths, branches, or specific files
+	cleanURL := url
+
+	// Remove /blob/ and everything after it
+	if strings.Contains(cleanURL, "/blob/") {
+		cleanURL = strings.Split(cleanURL, "/blob/")[0]
+	}
+
+	// Remove /tree/ and everything after it
+	if strings.Contains(cleanURL, "/tree/") {
+		cleanURL = strings.Split(cleanURL, "/tree/")[0]
+	}
+
+	// Remove trailing slash
+	cleanURL = strings.TrimSuffix(cleanURL, "/")
+
+	// Remove .git if present
 	cleanURL = strings.TrimSuffix(cleanURL, ".git")
 
-	re := regexp.MustCompile(`github\.com/([^/]+)/([^/]+)`)
+	// Extract owner and repo using regex
+	re := regexp.MustCompile(`github\.com/([^/]+)/([^/]+)$`)
 	matches := re.FindStringSubmatch(cleanURL)
 	if len(matches) != 3 {
-		return "", "", fmt.Errorf("invalid GitHub URL")
+		return "", "", fmt.Errorf("invalid GitHub URL: %s", url)
 	}
-	return strings.TrimSpace(matches[1]), strings.TrimSpace(matches[2]), nil
+
+	owner := strings.TrimSpace(matches[1])
+	repo := strings.TrimSpace(matches[2])
+
+	// Validate that we have valid owner and repo
+	if owner == "" || repo == "" {
+		return "", "", fmt.Errorf("invalid GitHub URL: %s", url)
+	}
+
+	return owner, repo, nil
 }
 
-func cloneRepository(repoURL, clonePath string) error {
+func cloneRepository(owner, repo, clonePath string) error {
 	// Remove existing directory if it exists
 	if _, err := os.Stat(clonePath); !os.IsNotExist(err) {
 		os.RemoveAll(clonePath)
 	}
 
-	// Ensure the URL is a proper git repository URL
-	if !strings.HasSuffix(repoURL, ".git") {
-		repoURL = repoURL + ".git"
-	}
+	// Construct the proper GitHub clone URL
+	repoURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
 
 	// Clone the repository
 	cmd := exec.Command("git", "clone", "--depth", "1", repoURL, clonePath)
@@ -298,7 +320,7 @@ func cloneRepoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Clone repository
 	clonePath := filepath.Join(reposDir, fmt.Sprintf("%s-%s", owner, repo))
-	if err := cloneRepository(req.RepoURL, clonePath); err != nil {
+	if err := cloneRepository(owner, repo, clonePath); err != nil {
 		log.Printf("Error cloning repository: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to clone repository: %v", err), http.StatusInternalServerError)
 		return
