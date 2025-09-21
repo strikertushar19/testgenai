@@ -2,6 +2,17 @@
 
 TestGen is a comprehensive AI-powered test case generation platform that automatically creates and executes test cases for your code repositories using Google's Gemini AI. The system consists of a React frontend and a Go backend that work together to clone repositories, analyze code, and generate comprehensive test suites.
 
+## 🎥 Demo & Live Application
+
+- **📹 Demo Video**: [Watch TestGen in Action](https://drive.google.com/file/d/1oe_iXDBiUjaP40NkFQlxKrJ40jFhGJJA)
+- **🌐 Live Application**: [Try TestGen Online](https://testgenai-psi.vercel.app/)
+
+## 🚀 Quick Start
+
+1. **Watch the Demo**: See TestGen in action with the demo video above
+2. **Try Online**: Use the live application to test without installation
+3. **Local Setup**: Follow the setup instructions below for development
+
 ## 🏗️ Architecture Overview
 
 ```
@@ -193,13 +204,20 @@ Test Cases → Mock Functions → Execution → Result Validation → Display
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Option 1: Try Online (Recommended)
+- **🌐 Live Demo**: [testgenai-psi.vercel.app](https://testgenai-psi.vercel.app/)
+- **📹 Video Demo**: [Watch TestGen in Action](https://drive.google.com/file/d/1oe_iXDBiUjaP40NkFQlxKrJ40jFhGJJA)
+- No installation required - just add your Gemini API key and start generating tests!
+
+### Option 2: Local Development Setup
+
+#### Prerequisites
 - Node.js 18+
 - Go 1.21+
 - Git
 - Google Gemini API Key
 
-### Frontend Setup
+#### Frontend Setup
 ```bash
 cd testgen/
 npm install
@@ -207,7 +225,7 @@ npm run dev
 # Runs on http://localhost:8080
 ```
 
-### Backend Setup
+#### Backend Setup
 ```bash
 cd testgen-backend/
 go mod tidy
@@ -286,6 +304,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **shadcn/ui** - For beautiful UI components
 - **Vite** - For fast development experience
 - **Go** - For robust backend performance
+- **Vercel** - For hosting the live application
+
+## 🔗 Links
+
+- **🌐 Live Application**: [testgenai-psi.vercel.app](https://testgenai-psi.vercel.app/)
+- **📹 Demo Video**: [Watch TestGen in Action](https://drive.google.com/file/d/1oe_iXDBiUjaP40NkFQlxKrJ40jFhGJJA)
+- **📚 Documentation**: This README file
 
 ---
 
